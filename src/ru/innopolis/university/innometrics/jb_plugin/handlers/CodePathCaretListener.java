@@ -7,13 +7,16 @@ import com.intellij.openapi.editor.impl.EditorImpl;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.fileTypes.LanguageFileType;
 import com.intellij.openapi.util.Key;
+import com.intellij.openapi.util.Pair;
 import com.intellij.psi.*;
 import com.jetbrains.python.psi.PyClass;
 import com.jetbrains.python.psi.PyFunction;
 import ru.innopolis.university.innometrics.jb_plugin.components.InnometricsComponent;
+import ru.innopolis.university.innometrics.jb_plugin.models.CodeLocation;
+
+import java.util.*;
 
 public class CodePathCaretListener implements CaretListener {
-    private static final String DELIMITER = "|";
     private static final Key<String> CARET_POSITION_KEY = new Key<>("LAST_CARET_POSITION_LINE");
 
     private static final String JAVA = "JAVA";
@@ -45,80 +48,78 @@ public class CodePathCaretListener implements CaretListener {
 
         // collect only if line has changed
         if (lastCaretPosLine == null || !lastCaretPosLine.equals(line)) {
+            // save last line in the editor
             editor.putUserData(CARET_POSITION_KEY, line);
-            String projectName = editor.getProject().getName();
+
+            String filePath = editor.getVirtualFile().getPath();
+
+            CodeLocation codePath = new CodeLocation();
+            codePath.addElement(CodeLocation.CodeElementLabel.PROJ, editor.getProject().getName());
 
             FileType fileType = editor.getVirtualFile().getFileType();
-            String filePath = "";
-            String languageName = "";
-            String packagePath = "";
-            String className = "";
-            String methodName = "";
-
             if (fileType instanceof LanguageFileType) {
                 LanguageFileType langFileType = (LanguageFileType) fileType;
-                languageName = langFileType.getLanguage().getDisplayName();
-                filePath = editor.getVirtualFile().getPath();
+                codePath.addElement(CodeLocation.CodeElementLabel.LANG, langFileType.getLanguage().getDisplayName());
 
-                PsiFile psiFile = PsiManager.getInstance(editor.getProject()).findFile(editor.getVirtualFile());
-                PsiElement el = psiFile.findElementAt(e.getCaret().getOffset());
-
+                // define language-dependent code elements
+                Map<Class, CodeLocation.CodeElementLabel> targetElements = new HashMap<>();
                 if (langFileType.getLanguage().getID().equals(JAVA)) {
 
                     PsiDirectory directory = PsiManager.getInstance(editor.getProject()).findDirectory(editor.getVirtualFile().getParent());
                     PsiPackage directoryPackage = JavaDirectoryService.getInstance().getPackage(directory);
-                    packagePath = directoryPackage.getQualifiedName();
 
-                    while (!(el == null || el instanceof PsiMethod || el instanceof PsiClass)) {
-                        el = el.getParent();
-                    }
-                    if (el != null && el instanceof PsiMethod) {
-                        methodName = ((PsiMethod) el).getName();
-                    }
+                    // java package as NS element
+                    codePath.addElement(CodeLocation.CodeElementLabel.NS, directoryPackage.getQualifiedName());
 
-                    while (!(el == null || el instanceof PsiClass)) {
-                        el = el.getParent();
-                    }
-                    if (el != null && el instanceof PsiClass) {
-                        className = ((PsiClass) el).getName();
-                    }
+                    // java specific class (CLASS) and method (FUNC) elements
+                    targetElements.put(PsiClass.class, CodeLocation.CodeElementLabel.CLASS);
+                    targetElements.put(PsiMethod.class, CodeLocation.CodeElementLabel.FUNC);
+                    // TODO lambda function PsiLambdaExpression
 
-                    // TODO try to replace with PsiElementVisitor or PsiRecursiveElementVisitor
-                }
+                } else if (langFileType.getLanguage().getID().equals(PYTHON)) {
 
-                if (langFileType.getLanguage().getID().equals(PYTHON)) {
-
+                    // TODO module path for python as NS element
                     /*PsiDirectory directory = PsiManager.getInstance(editor.getProject()).findDirectory(editor.getVirtualFile().getParent());
                     PyConvertModuleToPackageAction*/
+//                    codePath.addElement(CodeLocation.CodeElementLabel.NS, modulePath);
 
+                    // python specific class (CLASS) and function (FUNC) elements
+                    targetElements.put(PyClass.class, CodeLocation.CodeElementLabel.CLASS);
+                    targetElements.put(PyFunction.class, CodeLocation.CodeElementLabel.FUNC);
 
-                    while (!(el == null || el instanceof PyFunction || el instanceof PyClass)) {
-                        el = el.getParent();
-                    }
-                    // "el" is always null or PyFunction or PyClass here
-
-                    if (el != null && el instanceof PyFunction) {
-                        methodName = ((PyFunction) el).getName();
-                    }
-                    // "el" is always null or PyFunction or PyClass here
-
-                    while (!(el == null || el instanceof PyClass)) {
-                        el = el.getParent();
-                    }
-                    // "el" is always null or has PyClass type here
-
-                    if (el != null) {
-                        className = ((PyClass) el).getName();
-                    }
+                } else {
+                    // language is not supported
+                    return;
                 }
+
+                PsiFile psiFile = PsiManager.getInstance(editor.getProject()).findFile(editor.getVirtualFile());
+                PsiElement el = psiFile.findElementAt(e.getCaret().getOffset());
+
+                List<Pair<CodeLocation.CodeElementLabel, PsiNamedElement>> pathElements = new ArrayList<>();
+                // find required code path elements
+                while (!(el == null || el instanceof PsiFile)) {
+                    PsiElement finalEl = el;
+                    targetElements.entrySet().stream()
+                            .filter(entry -> entry.getKey().isInstance(finalEl))
+                            .findFirst()
+                            .ifPresent(entry -> pathElements.add(new Pair<>(entry.getValue(), (PsiNamedElement) finalEl)));
+                    el = el.getParent();
+                }
+                // TODO try to replace with PsiElementVisitor
+
+                Collections.reverse(pathElements);
+                for (Pair<CodeLocation.CodeElementLabel, PsiNamedElement> pathElement : pathElements) {
+                    codePath.addElement(pathElement.first, pathElement.second.getName());
+                }
+
             } else {
+                // not a programming language file
                 return;
-//                languageName = fileType.getName();
             }
 
             long millis = System.currentTimeMillis();
-            String path = line + DELIMITER + projectName + DELIMITER + languageName + DELIMITER +
-                    packagePath + DELIMITER + className + DELIMITER + methodName;
+            codePath.addElement(CodeLocation.CodeElementLabel.LINE, line);
+            String path = codePath.buildPath();
 
             innometricsComponent.editorLogActivity(path, filePath, millis);
         }/* else {

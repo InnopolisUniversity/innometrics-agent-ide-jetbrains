@@ -1,5 +1,6 @@
 package ru.innopolis.university.innometrics.jb_plugin.components;
 
+import com.intellij.ide.IdeEventQueue;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.impl.ApplicationInfoImpl;
 import com.intellij.openapi.components.ApplicationComponent;
@@ -9,6 +10,7 @@ import com.intellij.openapi.components.Storage;
 import com.intellij.openapi.editor.EditorFactory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import ru.innopolis.university.innometrics.jb_plugin.handlers.ApplicationCloseListener;
 import ru.innopolis.university.innometrics.jb_plugin.handlers.CodePathCaretListener;
 import ru.innopolis.university.innometrics.jb_plugin.models.Activity;
 import ru.innopolis.university.innometrics.jb_plugin.models.Measurement;
@@ -18,6 +20,9 @@ import java.util.List;
 
 @State(name = "Innometrics.InnometricsComponent", storages = {@Storage("innometrics.activities.xml")})
 public class InnometricsComponent implements ApplicationComponent, PersistentStateComponent<InnometricsComponent.State> {
+
+    private static final String COMPONENT_NAME = "Innometrics.InnometricsComponent";
+
     private String versionName;
     private String fullVersion;
     private String companyName;
@@ -53,8 +58,8 @@ public class InnometricsComponent implements ApplicationComponent, PersistentSta
         if (this.state == null) {
             this.state = new State();
         }
-        startingActivity();
         EditorFactory.getInstance().getEventMulticaster().addCaretListener(new CodePathCaretListener(this));
+        ApplicationManager.getApplication().addApplicationListener(new ApplicationCloseListener(this));
     }
 
     @Override
@@ -65,12 +70,13 @@ public class InnometricsComponent implements ApplicationComponent, PersistentSta
     @Override
     @NotNull
     public String getComponentName() {
-        return "Innometrics.InnometricsComponent";
+        return COMPONENT_NAME;
     }
 
     @Nullable
     @Override
     public State getState() {
+        // TODO log
         System.out.println("get: " + this.state);
         return this.state;
     }
@@ -81,14 +87,15 @@ public class InnometricsComponent implements ApplicationComponent, PersistentSta
         System.out.println("load: " + this.state);
     }
 
-    private void startingActivity() {
+    public void sessionActivity() {
         Activity a = new Activity();
-        a.name = "JetBrains IDE start time";
+        a.name = "JetBrains IDE session time";
         a.addMeasurement(new Measurement("version name", this.versionName, "string"));
         a.addMeasurement(new Measurement("full version", this.fullVersion, "string"));
         a.addMeasurement(new Measurement("company name", this.companyName, "string"));
         a.addMeasurement(new Measurement("start time", ApplicationManager.getApplication().getStartTime() + "", "long"));
-        a.addMeasurement(new Measurement("idle time", ApplicationManager.getApplication().getIdleTime() + "", "long"));
+        a.addMeasurement(new Measurement("close time", System.currentTimeMillis() + "", "long"));
+        a.addMeasurement(new Measurement("idle time", IdeEventQueue.getInstance().getIdleTime() + "", "long"));
         this.state.activities.add(a);
     }
 

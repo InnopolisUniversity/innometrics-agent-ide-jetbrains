@@ -21,6 +21,9 @@ public class ToolsMenuItem extends AnAction {
         String innometricsLogin = PropertiesComponent.getInstance().getValue("innometrics.login", "");
         String innometricsPassword = PropertiesComponent.getInstance().getValue("innometrics.password", "");
         String innometricsUrl = PropertiesComponent.getInstance().getValue("innometrics.url", "http://127.0.0.1:8000/");
+        // TODO use encryption for user password.
+        // See https://intellij-support.jetbrains.com/hc/en-us/community/posts/206147039-JDOMExternalizable-and-encrypting-
+        // try XmlSerializer
 
         JTextField username = new JBTextField(innometricsLogin);
         JPasswordField password = new JPasswordField(innometricsPassword);

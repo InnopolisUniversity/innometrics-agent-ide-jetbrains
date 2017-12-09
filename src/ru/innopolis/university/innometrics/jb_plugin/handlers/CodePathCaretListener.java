@@ -82,6 +82,8 @@ public class CodePathCaretListener implements CaretListener {
                     if (el != null && el instanceof PsiClass) {
                         className = ((PsiClass) el).getName();
                     }
+
+                    // TODO try to replace with PsiElementVisitor or PsiRecursiveElementVisitor
                 }
 
                 if (langFileType.getLanguage().getID().equals(PYTHON)) {
@@ -122,5 +124,6 @@ public class CodePathCaretListener implements CaretListener {
         }/* else {
             System.out.println("same");
         }*/
+//        DateFormatUtil.formatDuration(duration)
     }
 }

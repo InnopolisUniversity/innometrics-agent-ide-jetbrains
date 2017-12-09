@@ -5,14 +5,8 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.notification.Notification;
 import com.intellij.notification.NotificationType;
 import com.intellij.notification.Notifications;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.http.FullHttpRequest;
-import io.netty.handler.codec.http.HttpMethod;
-import io.netty.handler.codec.http.QueryStringDecoder;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
-import org.jetbrains.ide.RestService;
 import ru.innopolis.university.innometrics.jb_plugin.components.InnometricsComponent;
 import ru.innopolis.university.innometrics.jb_plugin.models.Activities;
 
@@ -20,14 +14,13 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.lang.reflect.InvocationTargetException;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-public class ActivitiesSenderService extends RestService {
+public class ActivitiesSenderService {
 
     private InnometricsComponent innometricsComponent;
 
@@ -35,7 +28,6 @@ public class ActivitiesSenderService extends RestService {
         this.innometricsComponent = innometricsComponent;
     }
 
-    private static final String SERVICE_NAME = "activitiesSenderService";
     private static final Logger LOG = Logger.getInstance(ActivitiesSenderService.class);
 
     private static String requestAuthToken() {
@@ -65,6 +57,7 @@ public class ActivitiesSenderService extends RestService {
                 wr.flush();
             }
             conn.connect();
+            // TODO find built-in rest request wrapper
 
             LOG.debug("Response code: " + String.valueOf(conn.getResponseCode()));
             LOG.debug("Response message: " + String.valueOf(conn.getResponseMessage()));
@@ -85,13 +78,13 @@ public class ActivitiesSenderService extends RestService {
     }
 
     public void sendMeasurements() {
-        // TODO find out how to use process() and execute() method
-        new Thread(() -> {
+        ApplicationManager.getApplication().executeOnPooledThread(() -> {
             String token = requestAuthToken();
             if (token == null) {
                 LOG.warn("Can't login to the Innometrics server");
                 return;
             }
+            //TODO token saving
 
             String innometricsUrl = PropertiesComponent.getInstance().getValue("innometrics.url", "http://127.0.0.1:8000/");
 
@@ -127,7 +120,7 @@ public class ActivitiesSenderService extends RestService {
                     activities.activities.clear();
                     LOG.debug("Response code: " + conn.getResponseCode());
                     LOG.debug("Response message: " + conn.getResponseMessage());
-                    Notification notification = new Notification("Innometrics Plugin", "Innometrics Plugin", "Measurements was sent successfully.", NotificationType.INFORMATION);
+                    Notification notification = new Notification("Innometrics Plugin", "Innometrics Plugin", "Measurements were sent successfully.", NotificationType.INFORMATION);
                     Notifications.Bus.notify(notification);
                 } else {
                     LOG.warn("Response code: " + conn.getResponseCode());
@@ -141,40 +134,7 @@ public class ActivitiesSenderService extends RestService {
                 Notification notification = new Notification("Innometrics Plugin", "Innometrics request problems", "An error occurred while trying to send data to the Innometrics server.", NotificationType.ERROR);
                 Notifications.Bus.notify(notification);
             }
+        });
 
-
-        }).start();
-
-    }
-
-/*    private static void writeJson(@NotNull OutputStream out, @Nullable QueryStringDecoder urlDecoder) throws IOException {
-        JsonWriter writer = createJsonWriter(out);
-        writer.beginObject();
-        //TODO
-    }*/
-
-    @NotNull
-    @Override
-    protected String getServiceName() {
-        return SERVICE_NAME;
-    }
-
-    @Override
-    protected boolean isMethodSupported(@NotNull HttpMethod method) {
-        return method == HttpMethod.POST;
-    }
-
-    @Nullable
-    @Override
-    public String execute(@NotNull QueryStringDecoder urlDecoder, @NotNull FullHttpRequest request, @NotNull ChannelHandlerContext context) throws IOException {
-//        BufferExposingByteArrayOutputStream byteOut = new BufferExposingByteArrayOutputStream();
-//        writeJson(byteOut, urlDecoder);
-//        send(byteOut, request, context);
-        return null;
-    }
-
-    @Override
-    protected boolean isHostTrusted(@NotNull FullHttpRequest request) throws InterruptedException, InvocationTargetException {
-        return true;
     }
 }

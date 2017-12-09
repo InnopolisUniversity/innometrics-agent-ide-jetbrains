@@ -1,6 +1,5 @@
 package ru.innopolis.university.innometrics.jb_plugin.handlers;
 
-import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.event.CaretEvent;
 import com.intellij.openapi.editor.event.CaretListener;
 import com.intellij.openapi.editor.impl.EditorImpl;
@@ -11,6 +10,7 @@ import com.intellij.openapi.util.Pair;
 import com.intellij.psi.*;
 import com.jetbrains.python.psi.PyClass;
 import com.jetbrains.python.psi.PyFunction;
+import com.jetbrains.python.psi.resolve.QualifiedNameFinder;
 import ru.innopolis.university.innometrics.jb_plugin.components.InnometricsComponent;
 import ru.innopolis.university.innometrics.jb_plugin.models.CodeLocation;
 
@@ -30,20 +30,17 @@ public class CodePathCaretListener implements CaretListener {
 
     @Override
     public void caretPositionChanged(CaretEvent e) {
-        String line = String.valueOf(e.getNewPosition().line);
-
-        Editor editorInterface = e.getEditor();
-        EditorImpl editor;
-        if (editorInterface instanceof EditorImpl) {
-            editor = (EditorImpl) editorInterface;
-        } else {
+        if (!(e.getEditor() instanceof EditorImpl)) {
             return;
         }
+
+        EditorImpl editor = (EditorImpl) e.getEditor();
 
         if (editor.getVirtualFile() == null) {
             return;
         }
 
+        String line = String.valueOf(e.getNewPosition().line);
         String lastCaretPosLine = editor.getUserData(CARET_POSITION_KEY);
 
         // collect only if line has changed
@@ -52,6 +49,7 @@ public class CodePathCaretListener implements CaretListener {
             editor.putUserData(CARET_POSITION_KEY, line);
 
             String filePath = editor.getVirtualFile().getPath();
+            PsiFile psiFile = PsiManager.getInstance(editor.getProject()).findFile(editor.getVirtualFile());
 
             CodeLocation codePath = new CodeLocation();
             codePath.addElement(CodeLocation.CodeElementLabel.PROJ, editor.getProject().getName());
@@ -69,7 +67,10 @@ public class CodePathCaretListener implements CaretListener {
                     PsiPackage directoryPackage = JavaDirectoryService.getInstance().getPackage(directory);
 
                     // java package as NS element
-                    codePath.addElement(CodeLocation.CodeElementLabel.NS, directoryPackage.getQualifiedName());
+                    String packageName = directoryPackage.getQualifiedName();
+                    if (!packageName.isEmpty()) {
+                        codePath.addElement(CodeLocation.CodeElementLabel.NS, packageName);
+                    }
 
                     // java specific class (CLASS) and method (FUNC) elements
                     targetElements.put(PsiClass.class, CodeLocation.CodeElementLabel.CLASS);
@@ -78,21 +79,21 @@ public class CodePathCaretListener implements CaretListener {
 
                 } else if (langFileType.getLanguage().getID().equals(PYTHON)) {
 
-                    // TODO module path for python as NS element
-                    /*PsiDirectory directory = PsiManager.getInstance(editor.getProject()).findDirectory(editor.getVirtualFile().getParent());
-                    PyConvertModuleToPackageAction*/
-//                    codePath.addElement(CodeLocation.CodeElementLabel.NS, modulePath);
+                    // python module path as NS element
+                    String module = QualifiedNameFinder.findShortestImportableName(psiFile, editor.getVirtualFile());
+                    if (module != null) {
+                        codePath.addElement(CodeLocation.CodeElementLabel.NS, module);
+                    }
 
                     // python specific class (CLASS) and function (FUNC) elements
                     targetElements.put(PyClass.class, CodeLocation.CodeElementLabel.CLASS);
                     targetElements.put(PyFunction.class, CodeLocation.CodeElementLabel.FUNC);
 
                 } else {
-                    // language is not supported
+                    // language is not supported by this plugin
                     return;
                 }
 
-                PsiFile psiFile = PsiManager.getInstance(editor.getProject()).findFile(editor.getVirtualFile());
                 PsiElement el = psiFile.findElementAt(e.getCaret().getOffset());
 
                 List<Pair<CodeLocation.CodeElementLabel, PsiNamedElement>> pathElements = new ArrayList<>();
@@ -114,6 +115,7 @@ public class CodePathCaretListener implements CaretListener {
 
             } else {
                 // not a programming language file
+                // or language is not supported by this app
                 return;
             }
 

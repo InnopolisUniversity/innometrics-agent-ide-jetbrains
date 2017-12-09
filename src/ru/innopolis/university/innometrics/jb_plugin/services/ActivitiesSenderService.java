@@ -40,7 +40,7 @@ public class ActivitiesSenderService {
         credentials.put("username", innometricsLogin);
         credentials.put("password", innometricsPassword);
         String requestBody = gson.toJson(credentials);
-//        System.out.println(requestBody);
+        LOG.trace("Request body: " + requestBody);
 
         String authUrl = innometricsUrl + "api-token-auth/";
         try {
@@ -91,7 +91,7 @@ public class ActivitiesSenderService {
             Gson gson = new Gson();
             Activities activities = new Activities();
             if (innometricsComponent.getState() != null) {
-                activities.activities = innometricsComponent.getState().activities;
+                activities.activities = innometricsComponent.getState().getActivities();
             } else {
                 LOG.debug("InnometricsComponent state is null");
             }

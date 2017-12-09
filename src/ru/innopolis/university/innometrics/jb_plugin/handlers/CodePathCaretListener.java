@@ -123,10 +123,7 @@ public class CodePathCaretListener implements CaretListener {
             codePath.addElement(CodeLocation.CodeElementLabel.LINE, line);
             String path = codePath.buildPath();
 
-            innometricsComponent.editorLogActivity(path, filePath, millis);
-        }/* else {
-            System.out.println("same");
-        }*/
-//        DateFormatUtil.formatDuration(duration)
+            innometricsComponent.switchActivity(path, filePath, millis);
+        }
     }
 }

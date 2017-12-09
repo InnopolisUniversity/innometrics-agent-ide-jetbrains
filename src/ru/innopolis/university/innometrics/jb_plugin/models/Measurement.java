@@ -1,9 +1,9 @@
 package ru.innopolis.university.innometrics.jb_plugin.models;
 
 public class Measurement {
-    public String name;
-    public String value;
-    public String type;
+    private String name;
+    private String value;
+    private String type;
 
     public Measurement() {
     }

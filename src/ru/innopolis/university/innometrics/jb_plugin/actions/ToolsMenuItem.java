@@ -11,8 +11,21 @@ import com.intellij.ui.components.JBTextField;
 import ru.innopolis.university.innometrics.jb_plugin.services.ActivitiesSenderService;
 
 import javax.swing.*;
+import java.io.IOException;
+import java.util.Properties;
 
 public class ToolsMenuItem extends AnAction {
+    private String defaultInnometricsUrl;
+
+    public ToolsMenuItem() {
+        Properties pluginProperties = new Properties();
+        try {
+            pluginProperties.load(getClass().getClassLoader().getResourceAsStream("plugin.properties"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        this.defaultInnometricsUrl = pluginProperties.getProperty("innometrics.server.url", "http://127.0.0.1:8000/");
+    }
 
     @Override
     public void actionPerformed(AnActionEvent e) {
@@ -20,7 +33,7 @@ public class ToolsMenuItem extends AnAction {
 
         String innometricsLogin = PropertiesComponent.getInstance().getValue("innometrics.login", "");
         String innometricsPassword = PropertiesComponent.getInstance().getValue("innometrics.password", "");
-        String innometricsUrl = PropertiesComponent.getInstance().getValue("innometrics.url", "http://127.0.0.1:8000/");
+        String innometricsUrl = PropertiesComponent.getInstance().getValue("innometrics.url", defaultInnometricsUrl);
         // TODO use encryption for user password.
         // See https://intellij-support.jetbrains.com/hc/en-us/community/posts/206147039-JDOMExternalizable-and-encrypting-
         // try XmlSerializer

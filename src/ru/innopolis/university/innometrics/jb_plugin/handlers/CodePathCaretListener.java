@@ -1,5 +1,6 @@
 package ru.innopolis.university.innometrics.jb_plugin.handlers;
 
+import com.intellij.navigation.NavigationItem;
 import com.intellij.openapi.editor.event.CaretEvent;
 import com.intellij.openapi.editor.event.CaretListener;
 import com.intellij.openapi.editor.impl.EditorImpl;
@@ -10,6 +11,7 @@ import com.intellij.openapi.util.Pair;
 import com.intellij.psi.*;
 import com.jetbrains.python.psi.PyClass;
 import com.jetbrains.python.psi.PyFunction;
+import com.jetbrains.python.psi.PyLambdaExpression;
 import com.jetbrains.python.psi.resolve.QualifiedNameFinder;
 import ru.innopolis.university.innometrics.jb_plugin.components.InnometricsComponent;
 import ru.innopolis.university.innometrics.jb_plugin.models.CodeLocation;
@@ -40,7 +42,8 @@ public class CodePathCaretListener implements CaretListener {
             return;
         }
 
-        String line = String.valueOf(e.getNewPosition().line);
+        // count lines from 1 instead of 0
+        String line = String.valueOf(e.getNewPosition().line + 1);
         String lastCaretPosLine = editor.getUserData(CARET_POSITION_KEY);
 
         // collect only if line has changed
@@ -75,7 +78,7 @@ public class CodePathCaretListener implements CaretListener {
                     // java specific class (CLASS) and method (FUNC) elements
                     targetElements.put(PsiClass.class, CodeLocation.CodeElementLabel.CLASS);
                     targetElements.put(PsiMethod.class, CodeLocation.CodeElementLabel.FUNC);
-                    // TODO lambda function PsiLambdaExpression
+                    targetElements.put(PsiLambdaExpression.class, CodeLocation.CodeElementLabel.FUNC);
 
                 } else if (langFileType.getLanguage().getID().equals(PYTHON)) {
 
@@ -88,6 +91,7 @@ public class CodePathCaretListener implements CaretListener {
                     // python specific class (CLASS) and function (FUNC) elements
                     targetElements.put(PyClass.class, CodeLocation.CodeElementLabel.CLASS);
                     targetElements.put(PyFunction.class, CodeLocation.CodeElementLabel.FUNC);
+                    targetElements.put(PyLambdaExpression.class, CodeLocation.CodeElementLabel.FUNC);
 
                 } else {
                     // language is not supported by this plugin
@@ -96,21 +100,36 @@ public class CodePathCaretListener implements CaretListener {
 
                 PsiElement el = psiFile.findElementAt(e.getCaret().getOffset());
 
-                List<Pair<CodeLocation.CodeElementLabel, PsiNamedElement>> pathElements = new ArrayList<>();
+                List<Pair<CodeLocation.CodeElementLabel, NavigationItem>> pathElements = new ArrayList<>();
                 // find required code path elements
                 while (!(el == null || el instanceof PsiFile)) {
                     PsiElement finalEl = el;
                     targetElements.entrySet().stream()
                             .filter(entry -> entry.getKey().isInstance(finalEl))
                             .findFirst()
-                            .ifPresent(entry -> pathElements.add(new Pair<>(entry.getValue(), (PsiNamedElement) finalEl)));
+                            .ifPresent(entry -> pathElements.add(new Pair<>(entry.getValue(), (NavigationItem) finalEl)));
                     el = el.getParent();
                 }
                 // TODO try to replace with PsiElementVisitor
 
                 Collections.reverse(pathElements);
-                for (Pair<CodeLocation.CodeElementLabel, PsiNamedElement> pathElement : pathElements) {
-                    codePath.addElement(pathElement.first, pathElement.second.getName());
+                for (Pair<CodeLocation.CodeElementLabel, NavigationItem> pathElement : pathElements) {
+                    String name = pathElement.second.getName();
+
+                    // naming anonymous classes and lambda expressions
+                    if (name == null) {
+                        switch (pathElement.first) {
+                            case CLASS:
+                                name = "[ANONYMOUS]";
+                                break;
+                            case FUNC:
+                                name = "[LAMBDA]";
+                                break;
+                            default:
+                                name = "";
+                        }
+                    }
+                    codePath.addElement(pathElement.first, name);
                 }
 
             } else {

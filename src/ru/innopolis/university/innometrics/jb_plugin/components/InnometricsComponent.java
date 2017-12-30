@@ -64,10 +64,6 @@ public class InnometricsComponent implements ApplicationComponent, PersistentSta
     }
 
     @Override
-    public void disposeComponent() {
-    }
-
-    @Override
     @NotNull
     public String getComponentName() {
         return COMPONENT_NAME;

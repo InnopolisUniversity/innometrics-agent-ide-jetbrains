@@ -30,17 +30,31 @@ public class ActivitiesSenderService {
 
     private static final Logger LOG = Logger.getInstance(ActivitiesSenderService.class);
 
+    private static String authRequestJsonBody(String login, String password) {
+        Gson gson = new Gson();
+        Map<String, String> credentials = new HashMap<String, String>();
+        credentials.put("username", login);
+        credentials.put("password", password);
+        return gson.toJson(credentials);
+    }
+
+    private String measurementsRequestJsonBody() {
+        Gson gson = new Gson();
+        Activities activities = new Activities();
+        if (innometricsComponent.getState() != null) {
+            activities.activities = innometricsComponent.getState().getActivities();
+        } else {
+            LOG.debug("InnometricsComponent state is null");
+        }
+        return gson.toJson(activities);
+    }
+
     private static String requestAuthToken() {
         String innometricsLogin = PropertiesComponent.getInstance().getValue("innometrics.login", "");
         String innometricsPassword = PropertiesComponent.getInstance().getValue("innometrics.password", "");
         String innometricsUrl = PropertiesComponent.getInstance().getValue("innometrics.url", "http://127.0.0.1:8000/");
 
-        Gson gson = new Gson();
-        Map<String, String> credentials = new HashMap<String, String>();
-        credentials.put("username", innometricsLogin);
-        credentials.put("password", innometricsPassword);
-        String requestBody = gson.toJson(credentials);
-        LOG.trace("Request body: " + requestBody);
+        String requestBody = authRequestJsonBody(innometricsLogin, innometricsPassword);
 
         String authUrl = innometricsUrl + "api-token-auth/";
         try {
@@ -65,7 +79,7 @@ public class ActivitiesSenderService {
             String result = new BufferedReader(new InputStreamReader(conn.getInputStream()))
                     .lines().collect(Collectors.joining("\n"));
 
-            Map tokenResult = gson.fromJson(result, Map.class);
+            Map tokenResult = new Gson().fromJson(result, Map.class);
             Object token = tokenResult.get("token");
 //            return token == null ? null : String.valueOf(token);
             return (String) token;
@@ -88,15 +102,8 @@ public class ActivitiesSenderService {
 
             String innometricsUrl = PropertiesComponent.getInstance().getValue("innometrics.url", "http://127.0.0.1:8000/");
 
-            Gson gson = new Gson();
-            Activities activities = new Activities();
-            if (innometricsComponent.getState() != null) {
-                activities.activities = innometricsComponent.getState().getActivities();
-            } else {
-                LOG.debug("InnometricsComponent state is null");
-            }
 
-            String requestBody = gson.toJson(activities);
+            String requestBody = measurementsRequestJsonBody();
             LOG.debug(requestBody);
 
             String measurementsUrl = innometricsUrl + "activities/";
@@ -117,7 +124,9 @@ public class ActivitiesSenderService {
                 conn.connect();
 
                 if (conn.getResponseCode() == HttpURLConnection.HTTP_OK || conn.getResponseCode() == HttpURLConnection.HTTP_CREATED) {
-                    activities.activities.clear();
+                    if (innometricsComponent.getState() != null) {
+                        innometricsComponent.getState().getActivities().clear();
+                    }
                     LOG.debug("Response code: " + conn.getResponseCode());
                     LOG.debug("Response message: " + conn.getResponseMessage());
                     Notification notification = new Notification("Innometrics Plugin", "Innometrics Plugin", "Measurements were sent successfully.", NotificationType.INFORMATION);

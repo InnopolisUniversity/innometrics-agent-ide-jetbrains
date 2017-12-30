@@ -5,6 +5,15 @@ import java.util.List;
 
 public class Activity {
     public List<Measurement> measurements;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
     public String name;
 
     public List<Measurement> getMeasurements() {
@@ -22,4 +31,11 @@ public class Activity {
         measurements.add(measurement);
     }
 
+    @Override
+    public String toString() {
+        return "Activity{" +
+                "measurements=" + measurements +
+                ", name='" + name + '\'' +
+                '}';
+    }
 }

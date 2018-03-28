@@ -17,6 +17,7 @@ import ru.innopolis.university.innometrics.jb_plugin.models.Activity;
 import ru.innopolis.university.innometrics.jb_plugin.models.Measurement;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 @State(name = "Innometrics.InnometricsComponent", storages = {@Storage("innometrics.activities.xml")})
@@ -24,11 +25,10 @@ public class InnometricsComponent implements ApplicationComponent, PersistentSta
 
     public static class State {
 
-        //TODO replace with thread-safe list
         private List<Activity> activities;
 
         State() {
-            this.activities = new ArrayList<>();
+            this.activities = Collections.synchronizedList(new ArrayList<>());
         }
 
 
@@ -37,7 +37,7 @@ public class InnometricsComponent implements ApplicationComponent, PersistentSta
         }
 
         public void setActivities(List<Activity> activities) {
-            this.activities = activities;
+            this.activities = Collections.synchronizedList(activities);
         }
     }
 

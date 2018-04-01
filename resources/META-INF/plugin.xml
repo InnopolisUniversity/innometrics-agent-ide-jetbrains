@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>ru.innopolis.university.innometrics.jb_plugin</id>
     <name>Innometrics plugin</name>
-    <version>0.3</version>
+    <version>0.4</version>
     <vendor url="https://university.innopolis.ru/">Innopolis University</vendor>
 
     <description><![CDATA[
@@ -46,10 +46,6 @@
                 text="Innometrics Plugin" description="Innometrics plugin tools menu item">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
         </action>
-        <!--<action id="Innometrics.EditorTypedAction" class="ru.innopolis.university.innometrics.jb_plugin.actions.EditorTypedAction" text="Editor Handler"
-                description="Editor key action">
-            <add-to-group group-id="EditorActions" anchor="first"/>
-        </action>-->
     </actions>
 
     <application-components>
@@ -58,10 +54,4 @@
             </implementation-class>
         </component>
     </application-components>
-    <!--<project-components>
-        <component>
-            <implementation-class>ru.innopolis.university.innometrics.jb_plugin.components.ProjectEditorComponent
-            </implementation-class>
-        </component>
-    </project-components>-->
 </idea-plugin>

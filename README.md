@@ -19,8 +19,8 @@ Innometrics Activity name: `"JetBrains IDE code location"`
     - `CLASS` - class name
     - `FUNC` - function or method name
     - `LINE` - line in the file
-- "code begin time" - UTC timestamp in ms, e.g. `1511857258858`
-- "code end time" - UTC timestamp in ms, e.g. `1511857258858`
+- "code begin time" - epoch time in seconds, e.g. `1511857258`
+- "code end time" - epoch time in seconds, e.g. `1511857258`
 - "version name" - name of the IDE application, e.g. `IntelliJ IDEA`
 - "full version" - version of the IDE application, e.g. `2017.2.5`
 - "company name" - vendor of the IDE application, e.g. `JetBrains s.r.o.`

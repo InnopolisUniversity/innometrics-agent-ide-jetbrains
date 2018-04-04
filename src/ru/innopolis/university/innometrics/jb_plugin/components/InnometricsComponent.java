@@ -86,19 +86,24 @@ public class InnometricsComponent implements ApplicationComponent, PersistentSta
     public void sessionActivity() {
         closeActivity(System.currentTimeMillis());
 
+        // epoch time in seconds
+        long startTime = ApplicationManager.getApplication().getStartTime() / 1000;
+        long closeTime = System.currentTimeMillis() / 1000;
+        long idleTime = IdeEventQueue.getInstance().getIdleTime() / 1000;
+
         Activity a = new Activity();
         a.name = "JetBrains IDE session time";
         a.addMeasurement(new Measurement("version name", this.versionName, "string"));
         a.addMeasurement(new Measurement("full version", this.fullVersion, "string"));
         a.addMeasurement(new Measurement("company name", this.companyName, "string"));
-        a.addMeasurement(new Measurement("start time", ApplicationManager.getApplication().getStartTime() + "", "long"));
-        a.addMeasurement(new Measurement("close time", System.currentTimeMillis() + "", "long"));
-        a.addMeasurement(new Measurement("idle time", IdeEventQueue.getInstance().getIdleTime() + "", "long"));
+        a.addMeasurement(new Measurement("start time", String.valueOf(startTime), "long"));
+        a.addMeasurement(new Measurement("close time", String.valueOf(closeTime), "long"));
+        a.addMeasurement(new Measurement("idle time", String.valueOf(idleTime), "long"));
         this.state.activities.add(a);
     }
 
-    public void switchActivity(String path, String file, long time) {
-        closeActivity(time);
+    public void switchActivity(String path, String file, long millis) {
+        closeActivity(millis);
 
         Activity a = new Activity();
         a.name = "JetBrains IDE code location";
@@ -107,13 +112,13 @@ public class InnometricsComponent implements ApplicationComponent, PersistentSta
         a.addMeasurement(new Measurement("company name", this.companyName, "string"));
         a.addMeasurement(new Measurement("file path", file, "string"));
         a.addMeasurement(new Measurement("code path", path, "string"));
-        a.addMeasurement(new Measurement("code begin time", String.valueOf(time), "long"));
+        a.addMeasurement(new Measurement("code begin time", String.valueOf(millis / 1000), "long"));
         this.tempActivity = a;
     }
 
-    private void closeActivity(long time) {
+    private void closeActivity(long millis) {
         if (tempActivity != null) {
-            tempActivity.addMeasurement(new Measurement("code end time", String.valueOf(time), "long"));
+            tempActivity.addMeasurement(new Measurement("code end time", String.valueOf(millis / 1000), "long"));
             this.state.activities.add(tempActivity);
             tempActivity = null;
         }
